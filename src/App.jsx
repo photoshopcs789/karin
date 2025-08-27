@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbw8oO3yt0zmp3NEI9Obo5p110q3AcAWCGkbm9ASxK1MpmsFXNfB4uxcJnBiRQsWMGAPtw/exec"; // Thay bằng URL webapp m
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwvzes1ISnBDLWa0svQaR9vr6ja5LBXZzrFF6UwstsleRrmZy7P0yR8WbU-FKHAaqFY/exec"; // Thay bằng URL webapp m
 
 async function callGAS(action, payload = {}) {
   try {
