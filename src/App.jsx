@@ -1,79 +1,95 @@
-// src/App.jsx
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbykGQhqNv-wSqAdcnnENI-fbnOmQwK3RkK6gbeQ98H9ZRXwatYIuGU5bNmyVl8csLUEvg/exec"; // thay bằng link của mày
+const GAS_URL = "https://script.google.com/macros/s/AKfycbykGQhqNv-wSqAdcnnENI-fbnOmQwK3RkK6gbeQ98H9ZRXwatYIuGU5bNmyVl8csLUEvg/exec"; // thay YOUR_WEBAPP_ID bằng ID WebApp của mày
 
-const App = () => {
+export default function App() {
   const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [prompt, setPrompt] = useState("");
+  const [email, setEmail] = useState("");
+  const [newTask, setNewTask] = useState("");
+  const [deadline, setDeadline] = useState("");
 
-  // fetch dữ liệu từ Apps Script
-  const fetchTasks = async () => {
+  // Hàm fetch chung
+  const callGAS = async (action, payload = {}) => {
     try {
       const res = await fetch(GAS_URL, {
-        method: "GET",
-        mode: "cors", // đảm bảo CORS
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ...payload }),
       });
-      if (!res.ok) throw new Error("Failed to fetch from GAS");
-      const data = await res.json();
-      setTasks(data);
+      return await res.json();
     } catch (err) {
-      console.error(err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      console.error("Error fetching GAS:", err);
+      return { error: err.message };
     }
   };
 
+  // Load dữ liệu lúc đầu
   useEffect(() => {
-    fetchTasks();
+    const init = async () => {
+      const data = await callGAS("getInitData");
+      if (!data.error) setTasks(data.tasks || []);
+    };
+    init();
   }, []);
 
+  const handleAddTask = async () => {
+    if (!newTask) return;
+    const data = await callGAS("addTask", { taskText: newTask, deadlineStr: deadline });
+    if (!data.error) {
+      setTasks((prev) => [...prev, data.result]);
+      setNewTask("");
+      setDeadline("");
+    }
+  };
+
+  const handleMarkDone = async (id) => {
+    const data = await callGAS("markDone", { id });
+    if (!data.error) {
+      setTasks((prev) => prev.map(t => t.id === id ? { ...t, done: true } : t));
+    }
+  };
+
+  const handleSavePrompt = async () => {
+    if (!prompt) return;
+    await callGAS("savePrompt", { prompt });
+    alert("Prompt saved!");
+  };
+
+  const handleSaveEmail = async () => {
+    if (!email) return;
+    await callGAS("saveRecipientEmail", { email });
+    alert("Email saved!");
+  };
+
   return (
-    <div style={styles.root}>
-      <h1 style={styles.title}>My WebApp</h1>
-      {loading && <p style={styles.info}>Loading...</p>}
-      {error && <p style={styles.error}>Error: {error}</p>}
-      <ul style={styles.list}>
-        {tasks.map((task, idx) => (
-          <li key={idx} style={styles.item}>
-            {task.name} - {task.deadline}
+    <div style={{ padding: 20, fontFamily: "sans-serif" }}>
+      <h1>My Tasks App</h1>
+
+      <div>
+        <input value={newTask} onChange={(e) => setNewTask(e.target.value)} placeholder="Task" />
+        <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+        <button onClick={handleAddTask}>Add Task</button>
+      </div>
+
+      <ul>
+        {tasks.map((t) => (
+          <li key={t.id}>
+            {t.text} - {t.deadline} - {t.done ? "✅" : "❌"}
+            {!t.done && <button onClick={() => handleMarkDone(t.id)}>Done</button>}
           </li>
         ))}
       </ul>
+
+      <div>
+        <input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Prompt" />
+        <button onClick={handleSavePrompt}>Save Prompt</button>
+      </div>
+
+      <div>
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Recipient Email" />
+        <button onClick={handleSaveEmail}>Save Email</button>
+      </div>
     </div>
   );
-};
-
-const styles = {
-  root: {
-    backgroundColor: "#0b1020",
-    color: "#fff",
-    minHeight: "100vh",
-    padding: "20px",
-    fontFamily: "Arial, sans-serif",
-  },
-  title: {
-    fontSize: "2rem",
-    marginBottom: "1rem",
-  },
-  info: {
-    color: "#ccc",
-  },
-  error: {
-    color: "red",
-  },
-  list: {
-    listStyle: "none",
-    padding: 0,
-  },
-  item: {
-    backgroundColor: "#111831",
-    marginBottom: "10px",
-    padding: "10px",
-    borderRadius: "8px",
-  },
-};
-
-export default App;
+}
